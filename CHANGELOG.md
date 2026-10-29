@@ -7,7 +7,7 @@
 - Updates are signed. The app only installs a package whose Ed25519 signature matches the public key built into it, and checks the download and every file against signed SHA-256 hashes.
 - Updates are installed beside the app in user-data/updates; the app folder is never overwritten. A small boot loader starts the newest verified version. If an update is modified, or fails to start twice, the app runs the previous working version instead.
 - Help → Check for updates…, and an option in About to turn the launch check off.
-- Releases are built, tested, signed and published by GitHub Actions when a version tag is pushed (.github/workflows/release.yml).
+- Releases are built, tested, signed and published by GitHub Actions whenever main has a new version number (.github/workflows/release.yml).
 
 ## 1.2.0 (29 October 2026)
 

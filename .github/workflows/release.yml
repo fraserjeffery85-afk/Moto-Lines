@@ -1,46 +1,60 @@
-# Publishes a release when a version tag is pushed, e.g.  git tag v1.3.0 && git push --tags
-# Needs the repository secret UPDATE_SIGNING_KEY (the private key from scripts/keygen.cjs).
+# Publishes a release whenever main has a version (package.json) that hasn't been
+# released yet. GitHub creates the v<version> tag itself. Can also be started from
+# the Actions tab (Run workflow). Needs the secret UPDATE_SIGNING_KEY.
 name: Release
 on:
   push:
-    tags: ['v*.*.*']
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
   release:
     runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
+      - name: Is this version new?
+        id: version
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          if gh release view "v$v" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v$v is already released; nothing to do."; echo "new=false" >> "$GITHUB_OUTPUT"
+          else echo "new=true" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/setup-node@v4
+        if: steps.version.outputs.new == 'true'
         with:
           node-version: 22
           cache: npm
-      - name: Tag must match package.json
-        if: github.event_name == 'push'
-        run: |
-          v=$(node -p "require('./package.json').version")
-          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package.json $v"; exit 1; }
-      - run: npm ci
+      - name: Install
+        if: steps.version.outputs.new == 'true'
+        run: npm ci
       - name: Unit tests
+        if: steps.version.outputs.new == 'true'
         run: npm test
-      - name: App end-to-end test
+      - name: App end-to-end tests
+        if: steps.version.outputs.new == 'true'
         continue-on-error: true
         run: |
           sudo apt-get update && sudo apt-get install -y xvfb libgbm1 libnss3 libasound2t64
           xvfb-run -a npm run test:gui
       - name: Build Windows app
+        if: steps.version.outputs.new == 'true'
         run: npm run build:win
       - name: Sign update package
+        if: steps.version.outputs.new == 'true'
         env:
           MLS_UPDATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: npm run make-update
       - name: Publish release
-        if: github.event_name == 'push'
-        env:
-          GH_TOKEN: ${{ github.token }}
+        if: steps.version.outputs.new == 'true'
         run: |
-          v=$(node -p "require('./package.json').version")
+          v=${{ steps.version.outputs.version }}
           node -p "require('./dist/update/update.json').notes" > notes.md
-          gh release create "$GITHUB_REF_NAME" dist/Moto-Lines-Studio-v$v-Windows.zip dist/update/* \
-            --title "Moto Lines Studio $v" --notes-file notes.md
+          gh release create "v$v" dist/Moto-Lines-Studio-v$v-Windows.zip dist/update/* \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Moto Lines Studio $v" --notes-file notes.md
