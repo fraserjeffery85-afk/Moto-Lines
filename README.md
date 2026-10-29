@@ -12,6 +12,7 @@ npm start                   # run from source
 npm test                    # unit tests (no GUI)
 xvfb-run -a npm run test:gui   # real Electron end-to-end test (Linux; on Windows just npm run test:gui)
 npm run build:win           # dist/Moto-Lines-Studio-v<version>-Windows (+ .zip), icon embedded
+npm run build:installer     # dist/installer/Moto-Lines-Studio-Setup-<version>.exe (NSIS, per-user; needs Wine with 32-bit support on Linux)
 ```
 
 `npm run test:gui` drives the real app with Playwright's Electron support on a temporary copy of `tests/fixtures`. On Linux CI add `--use-angle=swiftshader` (already passed by the test) and run under `xvfb-run`. Set `MLS_SCREENSHOTS=<dir>` to keep screenshots, or `MLS_APP_ROOT=<dist>/…/resources/app` to test a packaged build.
@@ -35,6 +36,7 @@ See [`docs/UPDATES.md`](docs/UPDATES.md) for setup and releasing. In short:
 | --- | --- |
 | `src/main/main.cjs` | Window, menus, dialogs, IPC (sender-checked), file open/save, backups, rider extraction, model asset protocol |
 | `src/main/preload.cjs` | Narrow `window.desktop` bridge |
+| `src/main/paths.cjs` | Where user data lives: `%APPDATA%\Moto Lines Studio` when installed (uninstaller beside the exe), `user-data` beside a portable exe |
 | `src/main/settings.cjs` | `user-data/settings.json` (rider.pkz, recents, prefs, window), validation, import from 0.8.x folders |
 | `src/core/cfg-core.js` | CFG parser with offsets, editable-field allowlist, validation, surgical patch, both-view mirroring *(unchanged from 0.8.4)* |
 | `src/core/storage.cjs` | Encoding, hashing, safe write with exact backups; now also list / read / restore backups |

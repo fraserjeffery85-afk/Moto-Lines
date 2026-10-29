@@ -9,7 +9,7 @@ Moto Lines Studio checks GitHub Releases each time it starts. When there's a new
    - Keep a backup of that file somewhere safe and offline (a USB stick or password manager). Don't share it or commit it.
    - If it leaks, someone could sign fake updates. If it's lost, you'd need a new key, and everyone would have to download one new build by hand.
 3. **Put the code in the repository.** Easiest: connect GitHub to Claude (claude.ai → Settings → Connectors → GitHub) and tell Claude the repository name, e.g. `yourname/moto-lines-studio`. Claude pushes the code and publishes the first release. Or upload the contents of the source zip yourself; pushing to `main` publishes the release.
-4. **First install.** When the *Release* action finishes, the release page has `Moto-Lines-Studio-v1.3.0-Windows.zip`. You and anyone you share it with download that once. From then on, updates come through the app.
+4. **First install.** When the *Release* action finishes, the release page has `Moto-Lines-Studio-Setup-<version>.exe`. You and anyone you share it with run it once. It installs the app with a desktop shortcut. From then on, updates come through the app.
 
 The repository name is built into each release, so builds made outside your repository don't check for updates. That's why the first install must come from the release.
 
@@ -25,6 +25,6 @@ You can also start the action by hand: *Actions → Release → Run workflow*. O
 
 - On launch the app asks GitHub for the latest release (a few kilobytes). The update file (about 8 MB) downloads only when someone clicks **Download**.
 - **Skip this version** hides that version until a newer one appears. Help → *Check for updates…* still finds it. The launch check can be turned off in Help → About.
-- Updates are stored in `user-data/updates` next to the app. The app folder itself is never changed.
+- Updates are stored in `%APPDATA%\Moto Lines Studio\updates` (or `user-data\updates` beside a portable copy). The installed program files are never changed.
 - If an update has been modified, or fails to start twice, the app runs the previous working version.
-- Occasionally an update needs a newer app runtime (Electron). Then the bar offers **Open download page** for a one-off full download instead.
+- Occasionally an update needs a newer app runtime (Electron). Then the bar offers **Open download page**, where the new Setup.exe installs over the old version and keeps all settings.

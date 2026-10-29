@@ -3,7 +3,7 @@
   "productName": "Moto Lines Studio",
   "description": "MX Bikes hand and chain lineup editor",
   "author": "OB Industries",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "private": true,
   "main": "src/main/boot.cjs",
   "updates": {
@@ -16,13 +16,15 @@
     "fixtures": "node scripts/make-fixtures.cjs",
     "build:win": "node scripts/build-windows.cjs",
     "keygen": "node scripts/keygen.cjs",
-    "make-update": "node scripts/make-update.cjs"
+    "make-update": "node scripts/make-update.cjs",
+    "build:installer": "node scripts/build-installer.cjs"
   },
   "dependencies": {
     "three": "0.180.0"
   },
   "devDependencies": {
     "electron": "40.0.0",
+    "electron-builder": "26.17.0",
     "playwright": "1.63.0",
     "resedit": "3.1.0"
   }

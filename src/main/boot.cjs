@@ -13,7 +13,7 @@ global.__mlsBoot=info;
 try{
   // Updates apply to the packaged app; from source only when a test asks for it.
   if(app.isPackaged||process.env.MLS_ALLOW_DEV_UPDATES==='1'){
-    const userData=process.env.MLS_USER_DATA||process.env.DGS_USER_DATA||path.join(app.isPackaged?path.dirname(process.execPath):ROOT,'user-data');
+    const userData=require('./paths.cjs').userDataDir(app,ROOT);
     const keyFile=!app.isPackaged&&process.env.MLS_UPDATE_PUBKEY?process.env.MLS_UPDATE_PUBKEY:path.join(__dirname,'update-public-key.pem');
     const core=require('./update-core.cjs');
     info.root=path.join(userData,'updates');

@@ -1,6 +1,9 @@
 # Publishes a release whenever main has a version (package.json) that hasn't been
 # released yet. GitHub creates the v<version> tag itself. Can also be started from
 # the Actions tab (Run workflow). Needs the secret UPDATE_SIGNING_KEY.
+#   build      (Linux)   tests, Windows app folder, signed update package
+#   installer  (Windows) wraps the app folder into Moto-Lines-Studio-Setup-<v>.exe
+#   publish    (Linux)   creates the release with the installer and update files
 name: Release
 on:
   push:
@@ -12,10 +15,13 @@ concurrency:
   group: release
   cancel-in-progress: false
 jobs:
-  release:
+  build:
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
+    outputs:
+      new: ${{ steps.version.outputs.new }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - name: Is this version new?
@@ -43,18 +49,71 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y xvfb libgbm1 libnss3 libasound2t64
           xvfb-run -a npm run test:gui
-      - name: Build Windows app
+      - name: Build Windows app folder
         if: steps.version.outputs.new == 'true'
+        env:
+          MLS_NO_ZIP: '1'
         run: npm run build:win
       - name: Sign update package
         if: steps.version.outputs.new == 'true'
         env:
           MLS_UPDATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: npm run make-update
-      - name: Publish release
+      - uses: actions/upload-artifact@v4
         if: steps.version.outputs.new == 'true'
+        with:
+          name: app
+          path: dist/Moto-Lines-Studio-v${{ steps.version.outputs.version }}-Windows
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: steps.version.outputs.new == 'true'
+        with:
+          name: update
+          path: dist/update
+          retention-days: 3
+
+  installer:
+    needs: build
+    if: needs.build.outputs.new == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: app
+          path: dist/Moto-Lines-Studio-v${{ needs.build.outputs.version }}-Windows
+      - name: Build Setup.exe
+        run: npm run build:installer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: dist/installer/Moto-Lines-Studio-Setup-${{ needs.build.outputs.version }}.exe
+          retention-days: 3
+
+  publish:
+    needs: [build, installer]
+    if: needs.build.outputs.new == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: update
+          path: update
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer
+          path: installer
+      - name: Publish release
         run: |
-          v=${{ steps.version.outputs.version }}
-          node -p "require('./dist/update/update.json').notes" > notes.md
-          gh release create "v$v" dist/Moto-Lines-Studio-v$v-Windows.zip dist/update/* \
+          v=${{ needs.build.outputs.version }}
+          node -p "require('./update/update.json').notes" > notes.md
+          gh release create "v$v" installer/Moto-Lines-Studio-Setup-$v.exe update/* \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Moto Lines Studio $v" --notes-file notes.md

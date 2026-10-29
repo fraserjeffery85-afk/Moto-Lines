@@ -1,16 +1,18 @@
-# Moto Lines Studio 1.3.0
+# Moto Lines Studio 1.3.1
 
 Created by OB Industries. A local editor for MX Bikes `gfx.cfg` hand and chain lineups. It replaces Moto Lines 0.8.4.
 
 ## Start
 
-1. Keep this whole folder together and run **Moto Lines Studio.exe**. Copying only the exe won't work. Windows may warn that the app is unsigned; choose *More info → Run anyway*.
+1. Run **Moto-Lines-Studio-Setup-<version>.exe**. It installs in a few seconds, adds a **Moto Lines Studio** shortcut to your desktop and Start menu, and opens the app. Windows may warn that the installer is unsigned; choose *More info → Run anyway*. No admin password is needed.
 2. **Open model**: choose the bike's `model.edf` (or an FBX/GLB/glTF/OBJ source). If a `gfx.cfg` sits next to it, it opens automatically.
 3. **Rider hands** show straight away. If MX Bikes is installed through Steam, the app uses the real stock glove from its `rider.pkz`. Otherwise it shows generic gloves that come with the app; press *Load rider.pkz…* and choose `rider.pkz` from your MX Bikes folder (Steam → MX Bikes → Manage → Browse local files) for the exact stock glove. The app remembers it.
 
+To remove the app: Windows *Settings → Apps → Moto Lines Studio → Uninstall*.
+
 ## Coming from Moto Lines 0.8.x
 
-If the old `Moto-Lines-v0.8.x-Windows` folder sits next to this one, the start screen offers to import it. Otherwise use *Help → Import from older Moto Lines…* and choose the old folder. This copies its recovery backups and adopts its rider.pkz location. The old folder isn't changed.
+Use *Help → Import from older Moto Lines…* and choose the old folder. This copies its recovery backups and adopts its rider.pkz location. The old folder isn't changed.
 
 ## Editing
 
@@ -50,4 +52,4 @@ Each time it opens, the app checks github.com/fraserjeffery85-afk/Moto-Lines for
 
 ## Your data
 
-Everything stays on this computer. Settings and backups live in `user-data` next to the exe. Keep that folder when you update.
+Everything stays on this computer. Settings, recovery backups and downloaded updates live in `%APPDATA%\Moto Lines Studio` (type that into the File Explorer address bar to open it). Uninstalling the app leaves them in place.

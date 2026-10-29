@@ -8,9 +8,9 @@ const {findRiderPackage}=require('./steam.cjs');
 const {createUpdater}=require('./updater.cjs');
 const PRODUCT='Moto Lines Studio',VERSION=require('../../package.json').version;
 
-// Portable: keep preferences, settings and recovery copies beside the app.
-const appFolder=app.isPackaged?path.dirname(process.execPath):ROOT;
-app.setPath('userData',process.env.MLS_USER_DATA||process.env.DGS_USER_DATA||path.join(appFolder,'user-data'));
+// Installed: %APPDATA%\Moto Lines Studio. Portable: user-data beside the exe (see paths.cjs).
+const paths=require('./paths.cjs'),appFolder=paths.appFolder(app,ROOT);
+app.setPath('userData',paths.userDataDir(app,ROOT));
 const backupRoot=path.join(app.getPath('userData'),'backups');
 const settings=new Settings(path.join(app.getPath('userData'),'settings.json'));
 // Optional developer / test auto-open file (cfg, model, hands.package).

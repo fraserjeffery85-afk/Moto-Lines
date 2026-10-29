@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.3.1 (29 October 2026)
+
+### New
+- One-file Windows installer: Moto-Lines-Studio-Setup-<version>.exe. It installs for the current user (no admin rights), adds desktop and Start menu shortcuts, opens the app when done, and registers an uninstaller in Windows Settings → Apps.
+- When installed, settings, backups and downloaded updates live in %APPDATA%\Moto Lines Studio, so reinstalling or uninstalling never removes them. The portable folder still keeps them in user-data beside the exe.
+
+### Changed
+- Releases offer the installer instead of the many-file zip.
+
 ## 1.3.0 (29 October 2026)
 
 ### New
