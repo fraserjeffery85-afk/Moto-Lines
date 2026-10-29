@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-mls-imports'; style-src 'self'; font-src 'self'; img-src 'self' data: blob: model:; connect-src 'self' model: data: blob:; worker-src 'self' blob:; object-src 'none'">
+<title>Moto Lines Studio</title><link rel="stylesheet" href="styles.css">
+<script type="importmap" nonce="mls-imports">{"imports":{"three":"../../node_modules/three/build/three.module.js","three/addons/":"../../node_modules/three/examples/jsm/"}}</script>
+<script src="../core/cfg-core.js" defer></script><script src="app.js" type="module"></script></head>
+<body>
+<header class="topbar">
+  <div class="brand"><img src="../../assets/moto-lines.png" alt=""><div><b>Moto Lines</b><span>Studio</span></div></div>
+  <div class="file" id="fileInfo"><strong id="cfgName">No GFX open</strong><span id="cfgPath">Open a bike’s gfx.cfg to start.</span></div>
+  <span class="unsaved" id="unsaved" hidden></span>
+  <div class="actions">
+    <button id="open" class="quiet">Open GFX</button><button id="model" class="quiet">Open model</button>
+    <span class="divider"></span>
+    <button id="saveBoth">Save both views…</button><button id="saveAs">Save as…</button>
+    <button id="save" class="primary">Save GFX</button>
+  </div>
+</header>
+<div class="updatebar" id="updateBar" role="status" hidden></div>
+
+<main>
+<aside class="rail">
+  <section>
+    <h2>View</h2>
+    <div class="segmented" role="group" aria-label="CFG section"><button id="external" class="active">Third person</button><button id="cockpit">Cockpit</button></div>
+  </section>
+  <section>
+    <h2>Lineups</h2>
+    <nav class="lineups" id="lineups">
+      <button data-part="leftgrip" class="lineup active"><i class="pip left"></i><span class="name">Left hand<kbd>1</kbd></span><span class="vals" id="vals-leftgrip">—</span></button>
+      <button data-part="rightgrip" class="lineup"><i class="pip right"></i><span class="name">Right hand<kbd>2</kbd></span><span class="vals" id="vals-rightgrip">—</span></button>
+      <button data-part="chain" class="lineup"><i class="pip chain"></i><span class="name">Chain<kbd>3</kbd></span><span class="vals" id="vals-chain">—</span></button>
+    </nav>
+  </section>
+  <section>
+    <h2>Model</h2>
+    <div class="card" id="modelCard">
+      <strong id="modelName">No model loaded</strong>
+      <p id="modelInfo" class="muted">Open an EDF, FBX, GLB, glTF or OBJ, or drop one on the viewport.</p>
+      <p id="modelBadge" class="badge" hidden></p>
+    </div>
+    <button id="matchingCfg" class="block" hidden>Open this bike’s gfx.cfg</button>
+    <div id="assemblyOptions" hidden><label>Bike view<select id="assemblyView"><option value="assembled">Assembled bike</option><option value="packed">Single component</option></select></label></div>
+    <div id="sourceOptions" hidden><label>Model units<select id="units"><option value="1">Metres</option><option value="0.01">Centimetres</option><option value="0.001">Millimetres</option></select></label><label>Component to edit against<select id="sourcePart"></select></label></div>
+  </section>
+  <section>
+    <h2>Rider hands</h2>
+    <label class="check"><input type="checkbox" id="showHands" checked> Show hands</label>
+    <ul class="handstatus" id="handVisibility"></ul>
+    <button id="fixHandFields" class="block warn" hidden>Go to the field hiding a hand</button>
+    <details id="riderOptions">
+      <summary>Rider source</summary>
+      <p id="handSource" class="muted">Hands come from rider.pkz in your MX Bikes folder (Steam → Manage → Browse local files).</p>
+      <button id="loadHands" class="block">Load rider hands</button>
+      <button id="chooseRider" class="block quiet">Choose a different rider.pkz…</button>
+      <label>Hand opacity<input id="handOpacity" type="range" min="10" max="100" value="100"></label>
+    </details>
+  </section>
+  <details>
+    <summary>Display</summary>
+    <label class="check" title="Shows the bike the way MX Bikes does. Off shows the mirror image that Moto Lines 0.8.4 displayed. CFG values are the same either way."><input type="checkbox" id="gameHanded" checked> Match MX Bikes left and right</label>
+    <label class="check"><input type="checkbox" id="grid" checked> Ground grid</label>
+    <label class="check"><input type="checkbox" id="helpers" checked> Lineup markers</label>
+    <label class="check"><input type="checkbox" id="ghost" checked> Saved position ghost</label>
+    <label class="check"><input type="checkbox" id="wire"> Wireframe</label>
+    <label class="check"><input type="checkbox" id="snap" checked> Snap drags to step size</label>
+  </details>
+  <div class="railfoot"><span id="version">Moto Lines Studio</span><br>Created by OB Industries. Files stay on this computer.</div>
+</aside>
+
+<section class="stage">
+  <div class="viewbar">
+    <strong id="spaceTitle">Steer · local space</strong>
+    <div class="cams">
+      <button id="frame" title="Frame bike (F)">Frame</button>
+      <button data-cam="front">Front</button><button data-cam="left" title="The bike’s left side (chain side)">Left</button><button data-cam="right" title="The bike’s right side">Right</button><button data-cam="top">Top</button>
+      <button id="riderCam" title="From behind the rider, looking down the bars">Rider</button>
+    </div>
+  </div>
+  <div id="viewport">
+    <div id="viewportNote"></div>
+    <div id="callout" role="status" hidden></div>
+    <div id="legend"></div>
+    <div id="hud" hidden></div>
+    <div id="loading" hidden><span class="spinner"></span><strong>Reading model geometry…</strong></div>
+    <div id="welcome">
+      <div class="welcome-inner">
+        <img src="../../assets/moto-lines.png" alt="Moto Lines emblem" class="emblem">
+        <h1>Line up hands and chain on your MX&nbsp;Bikes models.</h1>
+        <p class="muted">Open a bike’s <code>gfx.cfg</code> and its model. Only grip and chain fields change; everything else in the file stays exactly as it was.</p>
+        <div class="welcome-actions"><button id="welcomeOpen" class="primary">Open GFX</button><button id="welcomeModel">Open model</button></div>
+        <div id="legacyCard" class="legacy" hidden></div>
+        <div id="recentWrap" hidden><h2>Recent GFX files</h2><ul id="recentList" class="recent"></ul></div>
+        <p class="hint muted">Tip: drag a <code>.cfg</code> or model file anywhere onto this window. Press <kbd>F1</kbd> for shortcuts.</p>
+      </div>
+    </div>
+  </div>
+  <section class="drawer" id="drawer">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="changes" class="active">Changes <span id="changeCount" class="count">0</span></button>
+      <button role="tab" data-tab="output">Full output</button>
+      <button role="tab" data-tab="compare">Compare views</button>
+      <button role="tab" data-tab="backups">Backups</button>
+      <span class="spacer"></span>
+      <button id="copyCode" class="quiet">Copy output</button>
+      <button id="toggleDrawer" class="quiet" title="Ctrl+J">Show</button>
+    </div>
+    <div class="panes">
+      <div class="pane" data-pane="changes" id="changesPane"></div>
+      <div class="pane" data-pane="output" hidden><pre id="code"></pre></div>
+      <div class="pane" data-pane="compare" id="comparePane" hidden></div>
+      <div class="pane" data-pane="backups" id="backupsPane" hidden></div>
+    </div>
+  </section>
+</section>
+
+<aside class="inspector">
+  <div class="plate" id="plate">
+    <span class="view-tag" id="viewTag">Third person</span>
+    <h1 id="partTitle">Left hand</h1>
+    <code id="fieldPath">steer.leftgrip.pos</code>
+  </div>
+  <div id="chainTabs" class="segmented" hidden><button data-point="engine">Chain end</button><button data-point="pos">Mesh offset</button></div>
+  <p class="muted" id="partDescription"></p>
+
+  <div class="coords" id="xyz"></div>
+  <div class="steprow"><span>Step</span><div class="segmented small" id="steps"><button data-step="0.0001">0.0001</button><button data-step="0.001" class="active">0.001</button><button data-step="0.01">0.01</button></div></div>
+
+  <div class="tools">
+    <button id="reset">Reset</button><button id="focusPoint">Focus</button>
+    <button id="mirror" title="Copy this hand to the other side, mirrored across the bar centre (X → −X)">Mirror to right</button>
+    <button id="transfer">Copy to cockpit</button>
+  </div>
+  <div class="linkrow" id="linkRow">
+    <label class="switch"><input type="checkbox" id="linkHands" role="switch"><span>Keep hands symmetric</span><kbd>L</kbd></label>
+    <p class="muted small" id="linkHelp">Moving one hand moves the other as its mirror image: X flipped, Y and Z the same.</p>
+    <div class="linkfix" id="linkFix" hidden>
+      <p id="linkFixText"></p>
+      <div><button id="matchFromLeft">Match right to left</button><button id="matchFromRight">Match left to right</button></div>
+    </div>
+  </div>
+
+  <section id="chainSettings" hidden>
+    <h2>Chain texture</h2>
+    <div class="pair"><label>Axis<select id="axis"><option>u</option><option>u+</option><option>u-</option><option>v</option><option>v+</option><option>v-</option></select></label>
+    <label>Ratio<input type="text" id="ratio" inputmode="decimal" spellcheck="false"></label></div>
+    <p class="muted small">Written to the CFG. Texture travel and the game’s generated chain path aren’t simulated.</p>
+  </section>
+  <section id="chainGuideOptions" hidden>
+    <h2>Alignment guide</h2>
+    <p class="muted small">The rear axle comes from the MXB template. These controls only move the guide; they never change the CFG.</p>
+    <label>Rear axle along template travel<input id="rearAxle" type="range" min="0" max="100" value="50"></label>
+    <label>Rear sprocket plane (X, metres)<input id="rearPlane" type="text" inputmode="decimal" value="-0.074"></label>
+    <p class="readout" id="chainGuideStatus"></p>
+    <button id="focusChain" class="block">View chain line</button>
+  </section>
+  <details id="handCalibration">
+    <summary>Hand overlay alignment</summary>
+    <p class="muted small">Moves the glove overlay only. It never changes the CFG. Runtime wrist orientation in the game isn’t verified.</p>
+    <div id="handAdjustments" class="grid3"></div>
+    <button id="resetHand" class="block quiet">Reset overlay alignment</button>
+  </details>
+  <details id="saveOptions">
+    <summary>When saving <span id="saveModeTag" class="tag"></span></summary>
+    <label>Save output<select id="saveMode"><option value="auto">Both views · from the view I’m editing</option><option value="separate">Keep views separate</option><option value="external">Both views · from Third person</option><option value="cockpit">Both views · from Cockpit</option></select></label>
+    <p class="muted small" id="saveHelp"></p>
+    <button id="openBackups" class="block quiet">Open backups folder</button>
+  </details>
+
+  <section class="validation">
+    <h2>File check</h2>
+    <div id="validation"></div>
+  </section>
+  <div class="history"><button id="undo" title="Ctrl+Z">Undo</button><button id="redo" title="Ctrl+Y">Redo</button></div>
+  <details id="referenceInfo">
+    <summary>Placement accuracy</summary>
+    <p class="muted small" id="accuracy"></p>
+    <pre id="packedMatrix"></pre>
+  </details>
+</aside>
+</main>
+<footer><span id="status" role="status">Ready</span><span id="saveStatus"></span></footer>
+
+<dialog id="message"><h2 id="messageTitle"></h2><p id="messageText"></p><div class="dialog-actions"><button id="messageClose" class="primary">OK</button></div></dialog>
+<dialog id="bothSave">
+  <h2>Save both views</h2>
+  <p>Writes one gfx.cfg where the cockpit and third-person sections share the same hand and chain lineups. Other settings stay as they are.</p>
+  <label>Use the lineups from<select id="bothSource"><option value="external">Third person</option><option value="cockpit">Cockpit</option></select></label>
+  <div class="dialog-actions"><button id="bothCancel">Cancel</button><button id="bothConfirm" class="primary">Choose file and save</button></div>
+</dialog>
+<dialog id="repairs">
+  <h2>Possible typos found</h2>
+  <p>These values have a doubled decimal point, which the game can’t read. The suggestions remove the second point. Check each one before applying; nothing changes until you do.</p>
+  <p class="small" id="repairHands" hidden>While a grip value is invalid, that hand’s marker and glove stay hidden.</p>
+  <table class="repairs"><thead><tr><th></th><th>Field</th><th>Found</th><th>Suggested</th></tr></thead><tbody id="repairRows"></tbody></table>
+  <div class="dialog-actions"><button id="repairSkip">Leave as they are</button><button id="repairApply" class="primary">Apply selected</button></div>
+</dialog>
+<dialog id="shortcuts">
+  <h2>Keyboard shortcuts</h2>
+  <dl class="keys">
+    <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Left hand, right hand, chain</dd>
+    <dt><kbd>V</kbd></dt><dd>Switch third person / cockpit</dd>
+    <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move X by one step</dd>
+    <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Move Y by one step</dd>
+    <dt><kbd>PgUp</kbd> <kbd>PgDn</kbd></dt><dd>Move Z by one step</dd>
+    <dt><kbd>Shift</kbd></dt><dd>Hold for ten steps</dd>
+    <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Smaller / larger step</dd>
+    <dt><kbd>M</kbd></dt><dd>Mirror the selected hand to the other side</dd>
+    <dt><kbd>L</kbd></dt><dd>Keep hands symmetric on / off</dd>
+    <dt><kbd>F</kbd></dt><dd>Frame the bike</dd>
+    <dt><kbd>G</kbd></dt><dd>Focus the selected point</dd>
+    <dt><kbd>Ctrl</kbd> <kbd>Z</kbd> / <kbd>Y</kbd></dt><dd>Undo / redo lineup edits</dd>
+    <dt><kbd>Ctrl</kbd> <kbd>S</kbd></dt><dd>Save GFX</dd>
+    <dt><kbd>Ctrl</kbd> <kbd>J</kbd></dt><dd>Show or hide the changes drawer</dd>
+  </dl>
+  <p class="muted small">In a coordinate box, <kbd>↑</kbd> and <kbd>↓</kbd> step that value.</p>
+  <div class="dialog-actions"><button class="primary" data-close>Close</button></div>
+</dialog>
+<dialog id="whatsNew">
+  <h2 id="whatsNewTitle">What’s new</h2>
+  <div id="whatsNewText" class="notes"></div>
+  <div class="dialog-actions"><button data-close>Close</button><button class="primary" id="whatsNewDownload">Download</button></div>
+</dialog>
+<dialog id="about">
+  <img src="../../assets/moto-lines.png" alt="" class="about-emblem">
+  <h2>Moto Lines Studio <span id="aboutVersion"></span></h2>
+  <p>Created by OB Industries. A local editor for MX Bikes <code>gfx.cfg</code> hand and chain lineups.</p>
+  <h3>What it doesn’t do</h3>
+  <ul class="muted small">
+    <li>It shows a static pose. Suspension, steering and rider IK aren’t simulated.</li>
+    <li>The chain guide is a reference line to the template rear axle, not the game’s chain.</li>
+    <li>Bike placement is verified only for the original Husqvarna; other EDFs use the MXB template.</li>
+    <li>The hand overlay uses the real stock glove mesh; the game’s wrist orientation isn’t verified.</li>
+  </ul>
+  <p class="small">Always test final lineups in MX Bikes. Recovery copies of every overwritten file are kept in the backups folder.</p>
+  <h3>Updates</h3>
+  <p class="muted small" id="updateInfo"></p>
+  <label class="check"><input type="checkbox" id="autoUpdateCheck" checked> Check for updates when the app starts</label>
+  <button id="checkUpdatesNow" class="quiet">Check for updates now</button>
+  <div class="dialog-actions"><button class="primary" data-close>Close</button></div>
+</dialog>
+</body></html>

@@ -1,0 +1,46 @@
+# Publishes a release when a version tag is pushed, e.g.  git tag v1.3.0 && git push --tags
+# Needs the repository secret UPDATE_SIGNING_KEY (the private key from scripts/keygen.cjs).
+name: Release
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Tag must match package.json
+        if: github.event_name == 'push'
+        run: |
+          v=$(node -p "require('./package.json').version")
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "Tag $GITHUB_REF_NAME does not match package.json $v"; exit 1; }
+      - run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: App end-to-end test
+        continue-on-error: true
+        run: |
+          sudo apt-get update && sudo apt-get install -y xvfb libgbm1 libnss3 libasound2t64
+          xvfb-run -a npm run test:gui
+      - name: Build Windows app
+        run: npm run build:win
+      - name: Sign update package
+        env:
+          MLS_UPDATE_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: npm run make-update
+      - name: Publish release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v=$(node -p "require('./package.json').version")
+          node -p "require('./dist/update/update.json').notes" > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/Moto-Lines-Studio-v$v-Windows.zip dist/update/* \
+            --title "Moto Lines Studio $v" --notes-file notes.md
